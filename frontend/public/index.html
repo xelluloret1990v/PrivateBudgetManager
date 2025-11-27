@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>ZAMA • Private Budget Control</title>
+
+    <style>
+      :root {
+        --bg-color: #0f172a;
+        --card-bg: #1f2937;
+        --highlight: #ff8c00;
+        --text-color: #e5e5e5;
+        --btn-bg: #1c1c1c;
+        --btn-hover-bg: #333;
+        --border-color: #444;
+        --input-bg: #2e3a49;
+        --input-border: #3a4b5b;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 24px;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 980px;
+        padding: 24px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #1f2937 0%, #2d3e53 100%);
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+      }
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 18px;
+        color: var(--highlight);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        background: var(--card-bg);
+        padding: 14px;
+        border-radius: 10px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      }
+      .card-header {
+        font-size: 16px;
+        color: var(--highlight);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .input-group {
+        margin-bottom: 8px;
+      }
+      label {
+        font-size: 13px;
+        color: #cfcfcf;
+        display: block;
+        margin-bottom: 6px;
+      }
+      input,
+      button {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        border: 1px solid var(--input-border);
+        font-size: 14px;
+      }
+      .btn {
+        background-color: var(--btn-bg);
+        border: none;
+        color: var(--text-color);
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background-color: var(--btn-hover-bg);
+      }
+      .status-message {
+        margin-top: 8px;
+        font-size: 14px;
+        color: #bfcbd6;
+      }
+      .footer {
+        text-align: center;
+        color: #9aa4b4;
+        margin-top: 18px;
+        font-size: 13px;
+      }
+      a.whitepaper {
+        color: #9aa4b4;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="title">
+        Private Budget Control
+        <button id="btn-connect" class="btn" style="width: auto; margin-left: 20px; padding: 8px 16px">
+          Connect Wallet
+        </button>
+        <span id="wallet-status" style="margin-left: 12px; font-size: 14px; color: #bfcbd6">Not connected</span>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="card-header">Set Spending Limit (owner)</div>
+          <div class="input-group">
+            <label for="spendingLimit">Limit (ETH)</label>
+            <input id="spendingLimit" type="number" placeholder="e.g. 1.5" step="any" />
+          </div>
+          <button id="btn-set-limit" class="btn">Set Limit (encrypted)</button>
+          <div class="status-message" id="status-message">Only contract owner may set the encrypted limit.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Record Expense</div>
+          <div class="input-group">
+            <label for="expenseAmount">Amount (ETH)</label>
+            <input id="expenseAmount" type="number" placeholder="e.g. 0.25" step="any" />
+          </div>
+          <button id="btn-record-expense" class="btn">Record Expense (encrypted)</button>
+          <div class="status-message" id="expense-status">Record encrypted expense to add to your total.</div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Total / Limit</div>
+          <button id="btn-get-total" class="btn">Get My Total (decrypt)</button>
+          <div class="status-message" id="total-status">Total: —</div>
+
+          <div style="height: 10px"></div>
+
+          <button id="btn-check-exceeds" class="btn">Check If Total Exceeds Limit (decrypt)</button>
+          <div class="status-message" id="exceeds-status">Exceeded?: —</div>
+
+          <div style="height: 10px"></div>
+
+          <button id="btn-decrypt-limit" class="btn">Decrypt Spending Limit</button>
+          <div class="status-message" id="limit-status">Limit: —</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 14px">
+        <div class="card-header">Reset User Expenses (owner)</div>
+
+        <div class="input-group">
+          <label for="resetUserAddress">User Address</label>
+          <input id="resetUserAddress" type="text" placeholder="0x1234..." />
+        </div>
+
+        <button id="btn-reset-user" class="btn">Reset Expenses</button>
+        <div class="status-message" id="reset-status">—</div>
+      </div>
+
+      <div class="footer">
+        ZAMA FHEVM —
+        <a class="whitepaper" href="/mnt/data/fhevm_whitepaper_new.pdf" target="_blank" rel="noopener"
+          >FHEVM whitepaper</a
+        >
+      </div>
+    </div>
+
+    <script type="module">
+      /* ----------------------- Full script with detailed logging ----------------------- */
+
+      const contractAddress = "0x4095FD39F396aca6195aC9631825DA2F08D9020d";
+      const ORIGIN = window.location.origin;
+      const HAS_LOCAL_PROXY = ORIGIN.includes("localhost:3443") || ORIGIN.includes("127.0.0.1:3443");
+      const RELAYER_URL = HAS_LOCAL_PROXY ? `${ORIGIN}/relayer` : "https://relayer.testnet.zama.org";
+      const GATEWAY_URL = HAS_LOCAL_PROXY ? `${ORIGIN}/gateway` : "https://gateway.testnet.zama.org";
+
+      console.groupCollapsed("[INIT] Starting script");
+      console.log("[INIT] origin:", ORIGIN);
+      console.log("[INIT] relayer url:", RELAYER_URL);
+      console.log("[INIT] gateway url:", GATEWAY_URL);
+      console.groupEnd();
+
+      // -- imports (ethers + relayer sdk) --
+      const [{ BrowserProvider, Contract, parseEther, formatEther }, relayerSdk] = await Promise.all([
+        import("https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm"),
+        import("https://cdn.zama.org/relayer-sdk-js/0.3.0-5/relayer-sdk-js.js"),
+      ]);
+      // also import ethers helpers
+      import { ethers } from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
+
+      const { initSDK, createInstance, SepoliaConfig } = relayerSdk;
+      await initSDK();
+      console.log("[INIT] Relayer SDK inited");
+
+      // --- ABI (same as in your HTML) ---
+      const abi = [
+        { inputs: [], stateMutability: "nonpayable", type: "constructor" },
+        { inputs: [], name: "ZamaProtocolUnsupported", type: "error" },
+        {
+          anonymous: false,
+          inputs: [
+            { indexed: true, internalType: "address", name: "user", type: "address" },
+            { indexed: false, internalType: "bytes32", name: "newTotalHandle", type: "bytes32" },
+          ],
+          name: "ExpenseRecorded",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [
+            { indexed: true, internalType: "address", name: "user", type: "address" },
+            { indexed: false, internalType: "bytes32", name: "resultHandle", type: "bytes32" },
+          ],
+          name: "ExpensesChecked",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [{ indexed: true, internalType: "address", name: "user", type: "address" }],
+          name: "ExpensesReset",
+          type: "event",
+        },
+        {
+          anonymous: false,
+          inputs: [{ indexed: false, internalType: "bytes32", name: "limitHandle", type: "bytes32" }],
+          name: "SpendingLimitUpdated",
+          type: "event",
+        },
+        {
+          inputs: [],
+          name: "confidentialProtocolId",
+          outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "getSpendingLimit",
+          outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [{ internalType: "address", name: "who", type: "address" }],
+          name: "getTotalExceedsLimit",
+          outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [{ internalType: "address", name: "who", type: "address" }],
+          name: "getTotalExpenses",
+          outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [],
+          name: "owner",
+          outputs: [{ internalType: "address", name: "", type: "address" }],
+          stateMutability: "view",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "externalEuint64", name: "encAmount", type: "bytes32" },
+            { internalType: "bytes", name: "proof", type: "bytes" },
+          ],
+          name: "recordExpense",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [{ internalType: "address", name: "user", type: "address" }],
+          name: "resetUserExpenses",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            { internalType: "externalEuint64", name: "_spendingLimit", type: "bytes32" },
+            { internalType: "bytes", name: "proof", type: "bytes" },
+          ],
+          name: "setSpendingLimit",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
+          name: "transferOwnership",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ];
+
+      let provider, signer, contract, relayer;
+
+      // choose decryption mode: user vs public (https => userDecrypt)
+      const USE_USER_DECRYPT = window.location.protocol === "https:";
+      console.log("[INIT] USE_USER_DECRYPT =", USE_USER_DECRYPT);
+
+      /* ---------- helper: robust decrypted value extractor (unchanged) ---------- */
+      function extractDecryptedValue(obj) {
+        function bytesToBigInt(bytes) {
+          let u8;
+          if (bytes instanceof ArrayBuffer) u8 = new Uint8Array(bytes);
+          else if (bytes instanceof Uint8Array) u8 = bytes;
+          else return null;
+          let bi = 0n;
+          for (const b of u8) {
+            bi = (bi << 8n) + BigInt(b);
+          }
+          return bi;
+        }
+        function hexToBigInt(s) {
+          if (typeof s !== "string") return null;
+          if (s.startsWith("0x") || s.startsWith("0X")) return BigInt(s);
+          return null;
+        }
+        if (obj === null || obj === undefined) {
+          console.error("[extract] decrypt returned null/undefined");
+          throw new Error("Unsupported decrypt format");
+        }
+        let v = Array.isArray(obj) ? obj[0] : obj;
+        if (typeof v === "number") return BigInt(v);
+        if (typeof v === "string") {
+          const h = hexToBigInt(v);
+          if (h !== null) return h;
+          if (/^-?\d+$/.test(v)) return BigInt(v);
+        }
+        if (v instanceof Uint8Array || v instanceof ArrayBuffer) {
+          const b = bytesToBigInt(v);
+          if (b !== null) return b;
+        }
+        if (typeof v === "object") {
+          if (v.clearValue !== undefined) return BigInt(v.clearValue);
+          if (v.cleartext !== undefined) return BigInt(v.cleartext);
+          if (v.cleartexts !== undefined && Array.isArray(v.cleartexts) && v.cleartexts.length)
+            return BigInt(v.cleartexts[0]);
+          if (v.clearValues !== undefined && Array.isArray(v.clearValues) && v.clearValues.length)
+            return BigInt(v.clearValues[0]);
+          if (v.value !== undefined) return BigInt(v.value);
+          if (v.plaintext !== undefined) return BigInt(v.plaintext);
+          if (v.plaintexts !== undefined && Array.isArray(v.plaintexts) && v.plaintexts.length)
+            return BigInt(v.plaintexts[0]);
+          for (const key of Object.keys(v)) {
+            const val = v[key];
+            if (typeof val === "string") {
+              const h = hexToBigInt(val);
+              if (h !== null) return h;
+              if (/^-?\d+$/.test(val)) return BigInt(val);
+            }
+            if (val instanceof Uint8Array || val instanceof ArrayBuffer) {
+              const b = bytesToBigInt(val);
+              if (b !== null) return b;
+            }
+          }
+        }
+        console.error("[extract] Unsupported decrypt format:", obj);
+        throw new Error("Unsupported decrypt format");
+      }
+
+      /* --------------------- init / disconnect --------------------- */
+      async function init() {
+        console.groupCollapsed("[CONNECT] init()");
+        try {
+          if (!window.ethereum) {
+            console.error("[CONNECT] No window.ethereum");
+            return alert("Please install MetaMask");
+          }
+
+          provider = new BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
+          contract = new Contract(contractAddress, abi, signer);
+
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          console.log("[CONNECT] eth_requestAccounts done");
+
+          relayer = await createInstance({
+            ...SepoliaConfig,
+            relayerUrl: RELAYER_URL,
+            gatewayUrl: GATEWAY_URL,
+            network: window.ethereum,
+            debug: true,
+          });
+          console.log("[CONNECT] relayer instance created", { relayerUrl: RELAYER_URL, gatewayUrl: GATEWAY_URL });
+
+          const address = await signer.getAddress();
+          document.getElementById("btn-connect").textContent = "Disconnect";
+          document.getElementById("wallet-status").textContent = `Connected: ${address}`;
+
+          console.log("[CONNECT] Connected address:", address);
+        } catch (err) {
+          console.error("[CONNECT] init failed:", err);
+          alert("Failed to connect — see console");
+        }
+        console.groupEnd();
+      }
+
+      function disconnect() {
+        console.log("[CONNECT] disconnect()");
+        document.getElementById("btn-connect").textContent = "Connect Wallet";
+        document.getElementById("wallet-status").textContent = "Not connected";
+        provider = signer = contract = relayer = undefined;
+      }
+
+      /* --------------------- Button handlers (with detailed logs) --------------------- */
+
+      /* ---- Set spending limit (owner) ---- */
+      document.getElementById("btn-set-limit").addEventListener("click", async () => {
+        console.groupCollapsed("[SET LIMIT] clicked");
+        try {
+          const limit = document.getElementById("spendingLimit").value;
+          console.log("[SET LIMIT] raw input:", limit);
+          if (!limit) {
+            console.warn("[SET LIMIT] No limit entered");
+            alert("Enter a valid limit");
+            console.groupEnd();
+            return;
+          }
+
+          const wei = BigInt(parseEther(limit).toString());
+          console.log("[SET LIMIT] converted to wei (BigInt):", wei.toString());
+
+          const enc = relayer.createEncryptedInput(contractAddress, await signer.getAddress());
+          console.log("[SET LIMIT] created relayer EncryptedInput object");
+          enc.add64(wei);
+          console.log("[SET LIMIT] added 64-bit value to EncryptedInput");
+
+          const ciphertexts = await enc.encrypt();
+          console.log("[SET LIMIT] encrypt() returned", ciphertexts);
+
+          console.log("[SET LIMIT] handles:", ciphertexts.handles);
+          console.log("[SET LIMIT] inputProof length:", ciphertexts.inputProof?.length ?? 0);
+
+          const tx = await contract.setSpendingLimit(ciphertexts.handles[0], ciphertexts.inputProof);
+          console.log("[SET LIMIT] tx sent:", tx);
+          const receipt = await tx.wait();
+          console.log("[SET LIMIT] tx mined:", receipt);
+
+          document.getElementById("status-message").textContent = `Spending limit set (encrypted)`;
+          console.log("[SET LIMIT] completed successfully");
+        } catch (err) {
+          console.error("[SET LIMIT] failed:", err);
+          alert("Failed to set spending limit — see console");
+        }
+        console.groupEnd();
+      });
+
+      /* ---- Record expense ---- */
+      document.getElementById("btn-record-expense").addEventListener("click", async () => {
+        console.groupCollapsed("[RECORD] clicked");
+        try {
+          const amount = document.getElementById("expenseAmount").value;
+          console.log("[RECORD] raw input:", amount);
+          if (!amount) {
+            console.warn("[RECORD] No amount entered");
+            alert("Enter a valid amount");
+            console.groupEnd();
+            return;
+          }
+
+          const wei = BigInt(parseEther(amount).toString());
+          console.log("[RECORD] converted to wei (BigInt):", wei.toString());
+
+          const enc = relayer.createEncryptedInput(contractAddress, await signer.getAddress());
+          console.log("[RECORD] created EncryptedInput object");
+          enc.add64(wei);
+          console.log("[RECORD] added value to input");
+
+          const ciphertexts = await enc.encrypt();
+          console.log("[RECORD] encrypt() returned", ciphertexts);
+
+          const tx = await contract.recordExpense(ciphertexts.handles[0], ciphertexts.inputProof);
+          console.log("[RECORD] tx sent:", tx);
+          const receipt = await tx.wait();
+          console.log("[RECORD] tx mined:", receipt);
+
+          document.getElementById("expense-status").textContent = `Expense recorded (encrypted)`;
+          console.log("[RECORD] completed successfully");
+        } catch (err) {
+          console.error("[RECORD] failed:", err);
+          alert("Failed to record expense — see console");
+        }
+        console.groupEnd();
+      });
+
+      /* ---- Get total and decrypt ---- */
+      document.getElementById("btn-get-total").addEventListener("click", async () => {
+        console.groupCollapsed("[GET TOTAL] clicked");
+        try {
+          const user = await signer.getAddress();
+          console.log("[GET TOTAL] user address:", user);
+
+          const handle = await contract.getTotalExpenses(user);
+          console.log("[GET TOTAL] contract returned handle:", handle);
+
+          // Choose decryption method
+          let decrypted;
+          if (USE_USER_DECRYPT) {
+            console.log("[GET TOTAL] using userDecrypt(handle) — making EIP-712 signature flow");
+            decrypted = await relayer.userDecrypt(handle);
+            console.log("[GET TOTAL] userDecrypt result:", decrypted);
+          } else {
+            console.log("[GET TOTAL] using publicDecrypt([handle])");
+            decrypted = await relayer.publicDecrypt([handle]);
+            console.log("[GET TOTAL] publicDecrypt result:", decrypted);
+          }
+
+          const totalWei = extractDecryptedValue(decrypted);
+          console.log("[GET TOTAL] extracted BigInt wei:", totalWei.toString());
+
+          const totalEth = ethers.formatUnits(totalWei.toString(), 18);
+          console.log("[GET TOTAL] formatted ETH:", totalEth);
+
+          document.getElementById("total-status").textContent = `Total: ${totalEth} ETH`;
+          console.log("[GET TOTAL] done");
+        } catch (err) {
+          console.error("[GET TOTAL] failed:", err);
+          document.getElementById("total-status").textContent = "Error retrieving total";
+        }
+        console.groupEnd();
+      });
+
+      /* ---- Check total exceeds limit (decrypt boolean) ---- */
+      document.getElementById("btn-check-exceeds").addEventListener("click", async () => {
+        console.groupCollapsed("[CHECK] clicked");
+        try {
+          const user = await signer.getAddress();
+          console.log("[CHECK] user address:", user);
+
+          // call gets a tx so we can parse event
+          const tx = await contract.getTotalExceedsLimit(user);
+          console.log("[CHECK] getTotalExceedsLimit tx sent:", tx);
+          const receipt = await tx.wait();
+          console.log("[CHECK] getTotalExceedsLimit tx mined:", receipt);
+
+          // search logs for ExpensesChecked event
+          let resultHandle = null;
+          for (const log of receipt.logs) {
+            try {
+              const parsed = contract.interface.parseLog(log);
+              if (parsed && parsed.name === "ExpensesChecked") {
+                console.log("[CHECK] found ExpensesChecked log", parsed.args);
+                resultHandle = parsed.args[1];
+                break;
+              }
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+
+          if (!resultHandle) {
+            throw new Error("ExpensesChecked event not found in receipt logs");
+          }
+          console.log("[CHECK] resultHandle:", resultHandle);
+
+          // decrypt
+          let decrypted;
+          if (USE_USER_DECRYPT) {
+            console.log("[CHECK] using userDecrypt(resultHandle)");
+            decrypted = await relayer.userDecrypt(resultHandle);
+            console.log("[CHECK] userDecrypt result:", decrypted);
+          } else {
+            console.log("[CHECK] using publicDecrypt([resultHandle])");
+            decrypted = await relayer.publicDecrypt([resultHandle]);
+            console.log("[CHECK] publicDecrypt result:", decrypted);
+          }
+
+          const totalBool = extractDecryptedValue(decrypted);
+          console.log("[CHECK] extracted BigInt (0/1):", totalBool.toString());
+          const exceeded = Number(totalBool) === 1;
+          document.getElementById("exceeds-status").textContent = exceeded ? "⛔ EXCEEDS" : "✅ NOT EXCEEDS";
+          console.log("[CHECK] done, exceeded?", exceeded);
+        } catch (err) {
+          console.error("[CHECK] failed:", err);
+          document.getElementById("exceeds-status").textContent = "Error checking";
+        }
+        console.groupEnd();
+      });
+
+      /* ---- Decrypt spending limit ---- */
+      document.getElementById("btn-decrypt-limit").addEventListener("click", async () => {
+        console.groupCollapsed("[DECRYPT LIMIT] clicked");
+        try {
+          const handle = await contract.getSpendingLimit();
+          console.log("[DECRYPT LIMIT] handle returned:", handle);
+
+          let decrypted;
+          if (USE_USER_DECRYPT) {
+            console.log("[DECRYPT LIMIT] using userDecrypt(handle)");
+            decrypted = await relayer.userDecrypt(handle);
+            console.log("[DECRYPT LIMIT] userDecrypt result:", decrypted);
+          } else {
+            console.log("[DECRYPT LIMIT] using publicDecrypt([handle])");
+            decrypted = await relayer.publicDecrypt([handle]);
+            console.log("[DECRYPT LIMIT] publicDecrypt result:", decrypted);
+          }
+
+          const wei = extractDecryptedValue(decrypted);
+          console.log("[DECRYPT LIMIT] extracted wei BigInt:", wei.toString());
+          const eth = ethers.formatUnits(wei.toString(), 18);
+          console.log("[DECRYPT LIMIT] formatted ETH:", eth);
+
+          document.getElementById("limit-status").textContent = `Limit: ${eth} ETH`;
+          console.log("[DECRYPT LIMIT] done");
+        } catch (err) {
+          console.error("[DECRYPT LIMIT] failed:", err);
+          document.getElementById("limit-status").textContent = "Error decrypting limit";
+        }
+        console.groupEnd();
+      });
+
+      /* ---- Reset user expenses (owner only) ---- */
+      document.getElementById("btn-reset-user").addEventListener("click", async () => {
+        console.groupCollapsed("[RESET] clicked");
+        try {
+          const userAddr = document.getElementById("resetUserAddress").value.trim();
+          console.log("[RESET] input address:", userAddr);
+          if (!ethers.isAddress(userAddr)) {
+            console.warn("[RESET] invalid address", userAddr);
+            alert("Invalid address.");
+            console.groupEnd();
+            return;
+          }
+
+          const tx = await contract.resetUserExpenses(userAddr);
+          console.log("[RESET] tx sent:", tx);
+          const receipt = await tx.wait();
+          console.log("[RESET] tx mined:", receipt);
+
+          document.getElementById("reset-status").textContent = `Expenses for ${userAddr} have been reset to 0.`;
+          console.log("[RESET] completed successfully for", userAddr);
+        } catch (err) {
+          console.error("[RESET] failed:", err);
+          document.getElementById("reset-status").textContent = "Error resetting expenses (owner only)";
+        }
+        console.groupEnd();
+      });
+
+      /* ---- connect/disconnect click wiring ---- */
+      document.getElementById("btn-connect").addEventListener("click", () => {
+        const txt = document.getElementById("btn-connect").textContent;
+        console.log("[CONNECT] button clicked, current text:", txt);
+        if (!signer) init();
+        else disconnect();
+      });
+
+      console.log("[INIT] Script ready - handlers attached");
+    </script>
+  </body>
+</html>
